@@ -69,7 +69,7 @@ public class App {
 		return con;
         
 	}
-	private static void Insert_Data(String TAG_Nombre,String Tag_pdf,String Tag_xml) throws FileNotFoundException {
+	private static void Insert_Data(String TAG_Nombre,String Tag_pdf,String Tag_xml,String Tag_RazSoc) throws FileNotFoundException {
 		
 		File initialFile = new File(Tag_xml);
         InputStream inputStream = new FileInputStream(initialFile);
@@ -89,14 +89,14 @@ public class App {
 				System.out.println(" pdf no encontrado");
 			}
         	finally {
-        		System.out.println(" pdf no encontrado");
+        		System.out.println("--------");
         	}
         }         
         String[] Doc_arr = TAG_Nombre.split("-");
 		
 		try {
 			// constructs SQL statement
-	        String sql = "INSERT INTO Docs (doc_tipdoc, doc_serdoc, doc_ruc,doc_nro,doc_xml,doc_pdf) values (?, ?, ?, ?,?,?)";
+	        String sql = "INSERT INTO Docs (doc_tipdoc, doc_serdoc, doc_ruc,doc_nro,doc_xml,doc_pdf,[Doc_EmiRazSoc]) values (?, ?, ?, ?,?,?,?)";
 	        PreparedStatement statement = con.prepareStatement(sql);
 	
 	        
@@ -104,6 +104,7 @@ public class App {
 	        statement.setString(2, Doc_arr[2].toString());
 	        statement.setString(3, Doc_arr[0].toString());
 	        statement.setInt(4, Integer.parseInt(Doc_arr[3]));
+	        statement.setString(7, Tag_RazSoc);
 	
 	        
 			if (inputStream != null) {      	
@@ -133,10 +134,7 @@ public class App {
 	}
 	
 	
-	public static void watchDirectoryPath(Path path) {
-        // Sanity check - Check if path is a folder
-	//	WatchService watcher = FileSystems.getDefault().newWatchService();
-		
+	public static void watchDirectoryPath(Path path,Path pathPDF) {
 		
         try {
             Boolean isFolder = (Boolean) Files.getAttribute(path,
@@ -150,7 +148,8 @@ public class App {
             ioe.printStackTrace();
         }
 
-        System.out.println("Escaneando Ruta: " + path);
+        System.out.println("Escaneando Ruta XML: " + path);
+        System.out.println("Escaneando Ruta PDF: " + pathPDF);
 
         // We obtain the file system of the Path
         FileSystem fs = path.getFileSystem();
@@ -180,13 +179,14 @@ public class App {
                         Path newPath = ((WatchEvent<Path>) watchEvent)
                                 .context();                        
                         // Output
-                        System.out.println("Archivo Creado: " + newPath);
+                        System.out.println("Archivo Creado: " + path);
                         if(newPath.toString().endsWith(".xml")) {
                     	String[] Doc_arr = null;
                     	String Doc_inf = null;
+                    	String doc_Raz_Soc=null;
                         try {
 
-                        	File fXmlFile = new File("Y:\\"+newPath.toString());
+                        	File fXmlFile = new File(path.toString()+newPath.toString());
                         	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
                         	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
                         	Document doc = dBuilder.parse(fXmlFile);
@@ -198,7 +198,8 @@ public class App {
                         	System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
                         			
                         	NodeList nList = doc.getElementsByTagName("Documento");
-                        			
+                        	doc_Raz_Soc=	 doc.getElementsByTagName("cbc:Name").item(0).getTextContent();		
+                        	
                         	System.out.println("----------------------------");
 
                         	for (int temp = 0; temp < nList.getLength(); temp++) {
@@ -208,102 +209,24 @@ public class App {
                         		System.out.println("\nElemento Actual :" + nNode.getNodeName());
                         				
                         		if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-
                         			Element eElement = (Element) nNode;
-
-                        		//	System.out.println("Staff id : " + eElement.getAttribute("Nombre"));
-//                        			System.out.println("First Name : " + eElement.getElementsByTagName("Nombre").item(0).getTextContent());
                         			Doc_arr = eElement.getElementsByTagName("Nombre").item(0).getTextContent().split("-");
                         			Doc_inf = eElement.getElementsByTagName("Nombre").item(0).getTextContent();
                         			
                         			System.out.println("RUC	: " + Doc_arr[0]);
                         			System.out.println("TipDoc 	: " + Doc_arr[1]);
                         			System.out.println("Serie	: " + Doc_arr[2]);
-                        			System.out.println("Nro. Doc: " + Doc_arr[3]);
-                        			
-                        			
-                        		/*	System.out.println("Last Name : " + eElement.getElementsByTagName("lastname").item(0).getTextContent());
-                        			System.out.println("Nick Name : " + eElement.getElementsByTagName("nickname").item(0).getTextContent());
-                        			System.out.println("Salary : " + eElement.getElementsByTagName("salary").item(0).getTextContent());
-*/
+                        			System.out.println("NroDoc	: " + Doc_arr[3]);                        			
+                        			System.out.println("RazSoc	: " + doc_Raz_Soc);
+
                         		}
                         	}
                             } catch (Exception e) {
                         	e.printStackTrace();
                             }
                         GetCon();
-                        Insert_Data(Doc_inf,"Y:\\pdf\\"+Doc_inf+".pdf","Y:\\"+newPath.toString());
-/*                        File initialFile = new File("Y:\\"+newPath.toString());
-                        InputStream inputStream = new FileInputStream(initialFile);
-                        
-                        File initialFilePDF = new File("Y:\\pdf\\"+Doc_inf+".pdf");
-                        InputStream inputStreamPDF = new FileInputStream(initialFilePDF);
- 
-                        String message = null; 
-                        
-                        try {
-                            // connects to the database
-                            //DriverManager.registerDriver(new com.mysql.jdbc.Driver());
-                            
-                            SQLServerDataSource ds = new SQLServerDataSource();
-                	//		ds.setIntegratedSecurity(true);
-                			ds.setServerName("APOLO");
-                			ds.setPortNumber(1433); 
-                			ds.setDatabaseName("DB_Docs");
-                			ds.setPassword("Panam2014");
-                			ds.setUser("sa");
-                			con = ds.getConnection();
-                			
-//                            conn = DriverManager.getConnection(dbURL, dbUser, dbPass);
-                 
-                            // constructs SQL statement
-                            String sql = "INSERT INTO Docs (doc_tipdoc, doc_serdoc, doc_ruc,doc_nro,doc_xml,doc_pdf) values (?, ?, ?, ?,?,?)";
-//                            String sql = "INSERT INTO Docs (doc_tipdoc, doc_serdoc, doc_ruc,doc_nro,doc_xml,doc_pdf) values (?, ?, ?, ?,?,?)";
-                            PreparedStatement statement = con.prepareStatement(sql);
+                        Insert_Data(Doc_inf,pathPDF+"//"+Doc_inf+".pdf",path+newPath.toString(),doc_Raz_Soc);
 
-                            
-                            statement.setInt(1,Integer.parseInt(Doc_arr[1]) );//(1, Doc_arr[1].toString());
-                            statement.setString(2, Doc_arr[2].toString());
-                            statement.setString(3, Doc_arr[0].toString());
-                            statement.setInt(4, Integer.parseInt(Doc_arr[3]));
-                             
-                            if (inputStream != null) {
-                                // fetches input stream of the upload file for the blob column
-                            	
-                                statement.setBlob(5, inputStream, (int) initialFile.length());
-                            }
-                            
-                            if (inputStreamPDF != null) {
-                                // fetches input stream of the upload file for the blob column
-                            	System.out.println("SIP>"+"Y:\\PDF\\"+Doc_inf+".pdf");
-                                statement.setBlob(6, inputStreamPDF, (int) initialFilePDF.length());
-                            }
-                 
-                            // sends the statement to the database server
-                            int row = statement.executeUpdate();
-                            if (row > 0) {
-                                message = "File uploaded and saved into database";
-                            }
-                        } catch (SQLException ex) {
-                            message = "ERROR: " + ex.getMessage();
-                            ex.printStackTrace();
-                        } finally {
-                            if (con != null) {
-                                // closes the database connection
-                                try {
-                                    con.close();
-                                } catch (SQLException ex) {
-                                    ex.printStackTrace();
-                                }
-                            }
-                            // sets the message in request scope
-                        //    request.setAttribute("Message", message);
-                             
-                            // forwards to the message page
-                         //   getServletContext().getRequestDispatcher("/Message.jsp").forward(request, response);
-                        }
-                        
-                        */	
                         }
                         
                         
@@ -350,42 +273,19 @@ public class App {
 	public static void main ( String[] args ) throws InterruptedException, IOException
 	{
 		///*** ARGS ****
-		String Test_Path ="Y:\\";
-		File x;
+	//	String Test_Path ="Y:\\";
+	//	File x;
 		
 		readConfig fConfig=new readConfig();
-		fConfig.getPropValues();
+		String[]PROPS=fConfig.getPropValues();
+		System.out.println(PROPS[0]);
 		
-		File dir = new File("Y:\\");
-        watchDirectoryPath(dir.toPath());
+		File dirXML = new File(PROPS[1]);
+		File dirPDF = new File(PROPS[2]);
 		
-//		watchDirectoryPath(Test_Path.toPath());
-/*		finder(Test_Path);
-		while(true) {
-   		 
-   		 try
-	        {
-   			 	
-   			 	File[] VarFile=finder(Test_Path);
-   			 	
-   			 	Arrays.sort(VarFile, new Comparator<File>() {
-   			     public int compare(File f1, File f2) {
-   			        return Long.compare(f1.lastModified(), f2.lastModified());
-   			    }
-   			});
-	   			 for (int i = 0; i < VarFile.length; i++) {
-	   				 
-	   				System.out.println("["+i+"] "+VarFile[i].getName()+" >> ");
-	   			}
-	        }
-	        catch ( Exception e )
-	        {
-	            // TODO Auto-generated catch block
-	            e.printStackTrace();
-	        }
-   		TimeUnit.SECONDS.sleep(115);
-   	 }
-	*/	
+        watchDirectoryPath(dirXML.toPath(),dirPDF.toPath());
+		
+	
 		 
 	}
 }
